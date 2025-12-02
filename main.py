@@ -30,8 +30,8 @@ newAPI.createConnection("Family", "Damien", "Thomas")
 newAPI.createConnection("Studied", "Damien", "IUT2", **connection1)
 newAPI.createConnection("Working", "Emilie", "Evenbright", **connection2)
 
-newAPI.getUserRelatives("Emilie")
-newAPI.getUserRelativesRelatives("Emilie")
+result = newAPI.getUserRelatives("Emilie")
+result2 = newAPI.getUserRelativesRelatives("Emilie")
 
 newAPI.createMessage("Emilie", "Damien", "2", "Hello!")
 newAPI.createMessage("Emilie", "Damien", "3", "Hello!")
@@ -40,9 +40,8 @@ newAPI.createMessage("Damien", "Emilie", "2", "Hi!")
 newAPI.createMessage("Damien", "Emilie", "2", "Fine and you?")
 newAPI.createMessage("Emilie", "Damien", "2", "Perfect, see you tomorrow!")
 
-newAPI.getMessageAfterDate("Emilie", "Damien", "2", datetime.now() - timedelta(milliseconds=100))
-newAPI.getConversation("Emilie", "Damien", "2")
-
+result = newAPI.getMessageAfterDate("Emilie", "Damien", "2", datetime.now() - timedelta(milliseconds=100))
+result2 = newAPI.getConversation("Emilie", "Damien", "2")
 
 
 
