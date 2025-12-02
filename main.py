@@ -1,4 +1,5 @@
 from social_network_api import Social_Network_API
+from datetime import datetime, timedelta
 
 username = "neo4j"
 password = "neo4j123"
@@ -31,6 +32,16 @@ newAPI.createConnection("Working", "Emilie", "Evenbright", **connection2)
 
 newAPI.getUserRelatives("Emilie")
 newAPI.getUserRelativesRelatives("Emilie")
+
+newAPI.createMessage("Emilie", "Damien", "2", "Hello!")
+newAPI.createMessage("Emilie", "Damien", "3", "Hello!")
+newAPI.createMessage("Emilie", "Damien", "2", "How are you?")
+newAPI.createMessage("Damien", "Emilie", "2", "Hi!")
+newAPI.createMessage("Damien", "Emilie", "2", "Fine and you?")
+newAPI.createMessage("Emilie", "Damien", "2", "Perfect, see you tomorrow!")
+
+newAPI.getMessageAfterDate("Emilie", "Damien", "2", datetime.now() - timedelta(milliseconds=100))
+newAPI.getConversation("Emilie", "Damien", "2")
 
 
 

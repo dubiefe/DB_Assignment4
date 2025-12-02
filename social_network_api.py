@@ -1,4 +1,5 @@
 from neo4j import GraphDatabase
+from datetime import datetime
 
 class Social_Network_API:
 
@@ -59,6 +60,45 @@ class Social_Network_API:
             print(f"Relatives' relatives of {user}: ", users)
         else:
             print(f"No realtives' relatives found for {user}")
+
+    ## Messages
+    def createMessage(self, userFrom, userTo, convId, content):
+        result1 = self._session.execute_write(
+            lambda tx: tx.run(
+                f"match (n:User:Person)-[c:Message]->(m:User:Person) where c.convId = $convId and ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
+                name1=userFrom, name2=userTo, convId=convId
+        ).data())
+        seqNb = len(result1) + 1
+        self._session.execute_write(lambda tx: tx.run(
+            f"MATCH (n:User {{name: '{userFrom}'}}), (m:User {{name: '{userTo}'}}) CREATE (n)-[:Message $props]->(m)", props={"convId":convId, "content":content, "date":datetime.now(), "seqNb": seqNb}
+        ))
+        print(f"New :Message added between {userFrom} and {userTo}")
+
+    def getMessageAfterDate(self, user1, user2, convId, date):
+        results = self._session.execute_write(
+            lambda tx: [
+                record["c"]._properties
+                for record in tx.run(
+                f"match (n:User:Person)-[c:Message {{convId: $convId}}]->(m:User:Person) where c.date > $date and ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
+                name1=user1, convId=convId, name2=user2, date=date
+        )]) 
+        results.sort(key=lambda x: x['seqNb'])
+        print(f"Conversion n°{convId} between {user1} and {user2} after {date}:")
+        for result in results:
+            print(f"{result['seqNb']}: {result['content']}")
+
+    def getConversation(self, user1, user2, convId):
+        results = self._session.execute_write(
+            lambda tx: [
+                record["c"]._properties
+                for record in tx.run(
+                f"match (n:User:Person)-[c:Message {{convId: $convId}}]->(m:User:Person) where ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
+                name1=user1, convId=convId, name2=user2
+        )]) 
+        results.sort(key=lambda x: x['seqNb'])
+        print(f"Conversion n°{convId} between {user1} and {user2}:")
+        for result in results:
+            print(f"{result['seqNb']}: {result['content']}")
         
  
         
