@@ -23,6 +23,7 @@ class Social_Network_API:
     -------
     cleanDatabase(self)
         Delete everything in the database
+     -- Users --
     createUser(self, type, **kwargs)
         Create user according to the given type and attributes
     createConnection(self, type, userFrom, userTo, **kwargs)
@@ -31,12 +32,18 @@ class Social_Network_API:
         Get all the relatives of a selected user:Person (only the connections :Family)
     getUserRelativesRelatives(self, user) : set[str]
         Get all the relatives' relatives of a selected user:Person (only the connections :Family)
+     -- Messages --
     createMessage(self, userFrom, userTo, convId, content)
         Create a connection :Message between two users with the given attributes
     getMessageAfterDate(self, user1, user2, convId, date) -> set[str]
         Get all the messages of a conversation send after the given date
     getConversation(self, user1, user2, convId) -> set[str]
         Get all the messages of a conversation 
+     -- Publications --
+    createPublication(self, user, title, body, mentions)
+        Create a publication and all the connections linked to it
+    getMentionnedCollegues(self, user) -> set[str]
+        Get all the collegues mentionned in publication by the given user
     """
 
     _uri = "neo4j://localhost:7687"
@@ -231,7 +238,7 @@ class Social_Network_API:
         ## Sort the messages by the sequence number
         messages_after_date.sort(key=lambda x: x['seqNb'])
         print(f"Conversion n°{convId} between {user1} and {user2} after {date}:")
-        ## Deal with the messages
+        ## Deal with the messages' data
         messages_after_date_final = []
         for result in messages_after_date:
             ## Store it in a dictionnary for return
@@ -272,7 +279,7 @@ class Social_Network_API:
         ## Sort the messages by the sequence number
         messages.sort(key=lambda x: x['seqNb'])
         print(f"Conversion n°{convId} between {user1} and {user2}:")
-        ## Deal with the messages
+        ## Deal with the messages' data
         messages_final = []
         for result in messages:
             ## Store it in a dictionnary for return
@@ -283,6 +290,75 @@ class Social_Network_API:
             return messages_final
         else:
             return ["No conversation"]
+        
+    ## Publications
+    def createPublication(self, user, title, body, mentions):
+        """
+        Create a publication with the given title, body and mentions
+        Create :Published connection between the user and the publication
+        Create :Mentioned connections between the publication and all the users in the mentions
+
+        Parameters:
+        -----------
+        user: str
+            String with the name of the user who made the publication
+        title: str
+            String with the title of the publication
+        body: str
+            String with the body of the publication
+        mentions: set[str]
+            Set of Strings with the names of the users mentioned in the publication
+        """
+        ## Create publication and link with author
+        self._session.execute_write(lambda tx: tx.run(
+            f"match (n:User:Person {{name: $name}}) create (n)-[:Published]->(m:Publication $props)",
+            name=user, props={"title":title, "body":body, "mentions":mentions}
+        ))
+        print(f"New :Publication created titled '{title}' and published by {user}")
+        ## Create connections :Mentioned between publication and user in mentions
+        for mention in mentions:
+            self._session.execute_write(lambda tx: tx.run(
+                f"match (n:User:Person {{name: $name}}), (p:Publication {{title: $title}}) create (p)-[:Mentionned]->(n)",
+                name=mention, title=title
+            ))
+            print(f"New :Mentionned created between :Publication titled '{title}' and published by {user}, and {mention}") 
+
+    def getMentionnedCollegues(self, user) -> set[str]:
+        """
+        Get all user's collegues mentionned in one of their publication
+
+        Parameters:
+        -----------
+        user: str
+            String with the name of the user
+
+        Return:
+        -------
+        ["No mentionned collegues"] if no collegues are found
+        Or a dictionary with all the collegues' names mentionned in a publication
+        """
+        ## Get collegues mentionned in a publication of the user
+        collegues = self._session.execute_write(lambda tx: tx.run(
+            f"match (:User:Person {{name: $name}})-[:Working]->(c:User:Company) ,(:User:Person {{name: $name}})-[:Published]->(:Publication)-[:Mentionned]->(m:User:Person)-[:Working]->(:User:Company {{name: c.name}}) return m",
+            name=user
+        ).data())
+        ## Deal with the collegues' data
+        collegues_final = []
+        for collegue in collegues:
+            ## Store the collegue's name
+            collegues_final.append(collegue['m']['name'])
+        ## Display and return the result
+        if collegues_final:
+            print(f"Mentionned collegues of {user}: ", collegues_final)
+            return collegues_final
+        else:
+            print(f"No mentionned collegues found for {user}")
+            return ["No mentionned collegues"]
+
+            
+
+
+
         
  
         
