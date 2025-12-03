@@ -355,6 +355,41 @@ class Social_Network_API:
             print(f"No mentionned collegues found for {user}")
             return ["No mentionned collegues"]
 
+    ## Connections
+    def getConnectionsHops(self, userStart, userEnd, maxHops) -> set[str]:
+        """
+        Get all possible connections between two users with a maximum number of hops
+
+        Parameters:
+        -----------
+        userStart: str
+            String with the name of the first user
+        userEnd: str
+            String with the name of the second user
+        maxHops: int
+            Int with the maximum number of hops to find the connections
+
+        Return:
+        -------
+        ["No connections"] if no connections are found
+        Or a dictionary with all the possible paths
+        """
+        ## Element to build the query
+        start = f"match ({userStart}:User:Person {{name: $nameStart}})"
+        middle = f"-[:Family|Work|Friendship|Academic]->(m:User:Person)-[:Family|Work|Friendship|Academic]->"
+        end = f"({userEnd}:User:Person {{name: $nameEnd}}) return {userStart}, collect(DISTINCT m) AS intermediates, {userEnd}"
+        all_connections = []
+        ## Loop to fetch all connections
+        for i in range(maxHops):
+            connections = self._session.execute_write(lambda tx: tx.run(
+                start + middle + end,
+                nameStart=userStart, nameEnd=userEnd
+            ).data())
+            for connection in connections:
+                all_connections.append({"hops":i+1, "data":connection})
+            middle += "(m:User:Person)-[:Family|Work|Friendship|Academic]->"
+        ## Print result
+        print(all_connections)
             
 
 
