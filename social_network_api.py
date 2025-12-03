@@ -72,11 +72,14 @@ class Social_Network_API:
         kwargs: dict[str, str | dict]
             Dictionnary with all the data linked with the new user
         """
+        ## Check if the user type is allowed
         if type not in self._allowed_users_types:
             print("The user type must be one of these: ", self._allowed_users_types)
+        ## Create the new user
         else:
             self._session.execute_write(lambda tx: tx.run(
-                f"CREATE (n:User:{type} $props)", props=kwargs
+                f"CREATE (n:User:{type} $props)", 
+                props=kwargs
             ))
             print(f"New :User:{type} added named {kwargs["name"]}")
     
@@ -96,19 +99,20 @@ class Social_Network_API:
         kwargs: dict[str, str | dict]
             Dictionnary with all the data linked with the new user
         """
+        ## Check if the connection type is allowed
         if type not in self._allowed_users_connections_types:
             print("The connection type must be one of these: ", self._allowed_users_connections_types)
+        ## Create the new connection
         else:
             self._session.execute_write(lambda tx: tx.run(
-                f"MATCH (n:User {{name: '{userFrom}'}}), (m:User {{name: '{userTo}'}}) CREATE (n)-[:{type} $props]->(m)", props=kwargs
+                f"MATCH (n:User {{name: '{userFrom}'}}), (m:User {{name: '{userTo}'}}) CREATE (n)-[:{type} $props]->(m)", 
+                props=kwargs
             ))
             print(f"New connection :{type} added between {userFrom} and {userTo}")
     
     def getUserRelatives(self, user) -> set[str]:
         """
-        Login to a session in redis according to the username
-        Create a token with a lifetime of 1 month
-        Return the privilege of the user and the token
+        Get the name of the user:Person connected to the user with a :Family connection
 
         Parameters:
         -----------
@@ -120,12 +124,15 @@ class Social_Network_API:
         ['No relatives"] if the user doesn't have relatives
         Or a dictionary with the names of all the user's relatives
         """
-        result = self._session.execute_write(
+        ## Fetch the user's relatives
+        user_relatives = self._session.execute_write(
             lambda tx: tx.run(
-                f"match (n:User:Person {{name: $name}})-[:Family]->(m:User:Person) return m", name=user
+                f"match (n:User:Person {{name: $name}})-[:Family]->(m:User:Person) return m", 
+                name=user
         ).data())
-        if result:
-            users = [record["m"]["name"] for record in result]
+        ## Check the result
+        if user_relatives:
+            users = [record["m"]["name"] for record in user_relatives]
             print(f"Relatives of {user}: ", users)
             return users
         else:
@@ -134,28 +141,26 @@ class Social_Network_API:
 
     def getUserRelativesRelatives(self, user) -> set[str]:
         """
-        Login to a session in redis according to the username
-        Create a token with a lifetime of 1 month
-        Return the privilege of the user and the token
+        Get the name of the user:Person connected to another user:Person with a :Family connection and who also is connected to the user with a :Family connection
 
         Parameters:
         -----------
-        username: str
-            String with the username of the session we want to login
-        password: str
-            String with the password of the session we want to login
+        user: str
+            String with the name of the user
 
         Return:
         -------
-        -1 if the connection data are not good
-        Or a dictionary with the privilege and the token of the user
+        ['No relatives' relatives"] if the user doesn't have relatives' relatives
+        Or a dictionary with the names of all the user's relatives' relatives
         """
-        result = self._session.execute_write(
+        ## Fetch the user's relatives' relatives
+        user_relatives_relatives = self._session.execute_write(
             lambda tx: tx.run(
                 f"match (n:User:Person {{name: $name}})-[:Family]->(m:User:Person)-[:Family]->(o:User:Person) return o", name=user
         ).data())
-        if result:
-            users = [record["o"]["name"] for record in result]
+        ## Check the result
+        if user_relatives_relatives:
+            users = [record["o"]["name"] for record in user_relatives_relatives]
             print(f"Relatives' relatives of {user}: ", users)
             return users
         else:
@@ -165,102 +170,117 @@ class Social_Network_API:
     ## Messages
     def createMessage(self, userFrom, userTo, convId, content):
         """
-        Login to a session in redis according to the username
-        Create a token with a lifetime of 1 month
-        Return the privilege of the user and the token
+        Create a :Message connection between userFrom and userTo
+        The :Message has an attribute convId, content and seqNb
+        The last one is determined by all the messages in the same conversation already whared between the two users
 
         Parameters:
         -----------
-        username: str
-            String with the username of the session we want to login
-        password: str
-            String with the password of the session we want to login
-
-        Return:
-        -------
-        -1 if the connection data are not good
-        Or a dictionary with the privilege and the token of the user
+        userFrom: str
+            String with the name of the user who is sending the message
+        userTo: str
+            String with the name of the user who is receiving the message
+        convId: str
+            String with the id of the conversation where the message belongs
+        content: str
+            String with the content of the message send
         """
-        result1 = self._session.execute_write(
+        ## Look for all the previous messages in the conversation
+        messages_send = self._session.execute_write(
             lambda tx: tx.run(
                 f"match (n:User:Person)-[c:Message]->(m:User:Person) where c.convId = $convId and ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
                 name1=userFrom, name2=userTo, convId=convId
         ).data())
-        seqNb = len(result1) + 1
+        ## Calculate the sequence number based on the number of already send messages
+        seqNb = len(messages_send) + 1
+        ## Create the new message
         self._session.execute_write(lambda tx: tx.run(
-            f"MATCH (n:User {{name: '{userFrom}'}}), (m:User {{name: '{userTo}'}}) CREATE (n)-[:Message $props]->(m)", props={"convId":convId, "content":content, "date":datetime.now(), "seqNb": seqNb}
+            f"MATCH (n:User {{name: '{userFrom}'}}), (m:User {{name: '{userTo}'}}) CREATE (n)-[:Message $props]->(m)", 
+            props={"convId":convId, "content":content, "date":datetime.now(), "seqNb": seqNb}
         ))
         print(f"New :Message added between {userFrom} and {userTo}")
 
     def getMessageAfterDate(self, user1, user2, convId, date) -> set[str]:
         """
-        Login to a session in redis according to the username
-        Create a token with a lifetime of 1 month
-        Return the privilege of the user and the token
+        Get the messages between two users with the given convId after the given date
 
         Parameters:
         -----------
-        username: str
-            String with the username of the session we want to login
-        password: str
-            String with the password of the session we want to login
+        user1: str
+            String with the name of one of the user involved in the conversation
+        user2: str
+            String with the name of the other user involved in the conversation
+        convId: str
+            String with the id of the conversation
+        date: Date
+            Date with the minimum date for the messages
 
         Return:
         -------
-        -1 if the connection data are not good
-        Or a dictionary with the privilege and the token of the user
+        ["No conversation"] if no messages are found
+        Or a dictionary with all the messages send in the conversation after the date
         """
-        results = self._session.execute_write(
+        ## Fetch the messages after the date
+        messages_after_date = self._session.execute_write(
             lambda tx: [
                 record["c"]._properties
                 for record in tx.run(
                 f"match (n:User:Person)-[c:Message {{convId: $convId}}]->(m:User:Person) where c.date > $date and ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
                 name1=user1, convId=convId, name2=user2, date=date
         )]) 
-        results.sort(key=lambda x: x['seqNb'])
+        ## Sort the messages by the sequence number
+        messages_after_date.sort(key=lambda x: x['seqNb'])
         print(f"Conversion n°{convId} between {user1} and {user2} after {date}:")
-        resultsFinal = []
-        for result in results:
-            resultsFinal.append(f"{result['seqNb']}: {result['content']}")
+        ## Deal with the messages
+        messages_after_date_final = []
+        for result in messages_after_date:
+            ## Store it in a dictionnary for return
+            messages_after_date_final.append(f"{result['seqNb']}: {result['content']}")
+            ## Print it
             print(f"{result['seqNb']}: {result['content']}")
-        if resultsFinal:
-            return resultsFinal
+        if messages_after_date_final:
+            return messages_after_date_final
         else:
             return ["No conversation"]
 
     def getConversation(self, user1, user2, convId) -> set[str]:
         """
-        Login to a session in redis according to the username
-        Create a token with a lifetime of 1 month
-        Return the privilege of the user and the token
+        Get all the messages between two users with the given convId
 
         Parameters:
         -----------
-        username: str
-            String with the username of the session we want to login
-        password: str
-            String with the password of the session we want to login
+        user1: str
+            String with the name of one of the user involved in the conversation
+        user2: str
+            String with the name of the other user involved in the conversation
+        convId: str
+            String with the id of the conversation
 
         Return:
         -------
-        -1 if the connection data are not good
-        Or a dictionary with the privilege and the token of the user
+        ["No conversation"] if no messages are found
+        Or a dictionary with all the messages send in the conversation
         """
-        results = self._session.execute_write(
+        ## Fetch all the messages
+        messages = self._session.execute_write(
             lambda tx: [
                 record["c"]._properties
                 for record in tx.run(
                 f"match (n:User:Person)-[c:Message {{convId: $convId}}]->(m:User:Person) where ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
                 name1=user1, convId=convId, name2=user2
         )]) 
-        results.sort(key=lambda x: x['seqNb'])
+        ## Sort the messages by the sequence number
+        messages.sort(key=lambda x: x['seqNb'])
         print(f"Conversion n°{convId} between {user1} and {user2}:")
-        resultsFinal = []
-        for result in results:
-            resultsFinal.append(f"{result['seqNb']}: {result['content']}")
+        ## Deal with the messages
+        messages_final = []
+        for result in messages:
+            ## Store it in a dictionnary for return
+            messages_final.append(f"{result['seqNb']}: {result['content']}")
+            ## Print it
             print(f"{result['seqNb']}: {result['content']}")
-        if resultsFinal:
-            return resultsFinal
+        if messages_final:
+            return messages_final
         else:
             return ["No conversation"]
         
