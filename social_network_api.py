@@ -375,21 +375,30 @@ class Social_Network_API:
         Or a dictionary with all the possible paths
         """
         ## Element to build the query
-        start = f"match ({userStart}:User:Person {{name: $nameStart}})"
-        middle = f"-[:Family|Work|Friendship|Academic]->(m:User:Person)-[:Family|Work|Friendship|Academic]->"
-        end = f"({userEnd}:User:Person {{name: $nameEnd}}) return {userStart}, collect(DISTINCT m) AS intermediates, {userEnd}"
         all_connections = []
         ## Loop to fetch all connections
         for i in range(maxHops):
             connections = self._session.execute_write(lambda tx: tx.run(
-                start + middle + end,
+                f"MATCH p = ({userStart}:User:Person {{name: $nameStart}})-[:Family|Work|Friendship|Academic*1..{maxHops}]->({userEnd}:User:Person {{name: $nameEnd}})RETURN nodes(p) AS nodes, length(p) AS hops",
                 nameStart=userStart, nameEnd=userEnd
             ).data())
             for connection in connections:
-                all_connections.append({"hops":i+1, "data":connection})
-            middle += "(m:User:Person)-[:Family|Work|Friendship|Academic]->"
+                all_connections.append(connection)
         ## Print result
-        print(all_connections)
+        all_connections.sort(key=lambda x: x['hops'])
+        all_connections_final = []
+        if all_connections:
+            for connection in all_connections:
+                names = ""
+                for node in connection["nodes"]:
+                    names += node['name'] + ' -> '
+                all_connections_final.append(f"{connection['hops']}: {names}")
+            print(f"Connections of maximum {maxHops} between {userStart} and {userEnd}:")
+            for connection_final in all_connections_final:
+                print(f"{connection_final}")
+            return all_connections
+        else:
+            return ["No connections"]
             
 
 

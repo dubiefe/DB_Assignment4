@@ -82,19 +82,19 @@ newAPI.createConnection("Working", "Thomas", "Google", **connection2)
 result = newAPI.getUserRelatives("Emilie")
 result2 = newAPI.getUserRelativesRelatives("Emilie")
 
-newAPI.createMessage("Emilie", "Damien", "2", "Hello!")
-newAPI.createMessage("Emilie", "Damien", "3", "Hello!")
-newAPI.createMessage("Emilie", "Damien", "2", "How are you?")
-newAPI.createMessage("Damien", "Emilie", "2", "Hi!")
-newAPI.createMessage("Damien", "Emilie", "2", "Fine and you?")
-newAPI.createMessage("Emilie", "Damien", "2", "Perfect, see you tomorrow!")
+#newAPI.createMessage("Emilie", "Damien", "2", "Hello!")
+#newAPI.createMessage("Emilie", "Damien", "3", "Hello!")
+#newAPI.createMessage("Emilie", "Damien", "2", "How are you?")
+#newAPI.createMessage("Damien", "Emilie", "2", "Hi!")
+#newAPI.createMessage("Damien", "Emilie", "2", "Fine and you?")
+#newAPI.createMessage("Emilie", "Damien", "2", "Perfect, see you tomorrow!")
 
-result = newAPI.getMessageAfterDate("Emilie", "Damien", "2", datetime.now() - timedelta(milliseconds=100))
-result2 = newAPI.getConversation("Emilie", "Damien", "2")
+#result = newAPI.getMessageAfterDate("Emilie", "Damien", "2", datetime.now() - timedelta(milliseconds=100))
+#result2 = newAPI.getConversation("Emilie", "Damien", "2")
  
-newAPI.createPublication("Emilie", "Test", "Yeah, it is working", ["Thomas", "Damien"])
+#newAPI.createPublication("Emilie", "Test", "Yeah, it is working", ["Thomas", "Damien"])
 
-newAPI.getMentionnedCollegues("Emilie")
+#newAPI.getMentionnedCollegues("Emilie")
 
-newAPI.getConnectionsHops('Emilie', "Romane", 4)
+newAPI.getConnectionsHops('Emilie', "Irel", 3)
 
