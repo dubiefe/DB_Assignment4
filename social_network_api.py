@@ -302,9 +302,9 @@ class Social_Network_API:
         ## Create publication and link with author
         self._session.execute_write(lambda tx: tx.run(
             f"match (n:User:Person {{name: $name}}) create (n)-[:Published]->(m:Publication $props)",
-            name=user, props={"title":title, "body":body, "mentions":mentions}
+            name=user, props={"title":title, "body":body, "mentions":mentions, "date":datetime.now()}
         ))
-        print(f"New :Publication created titled '{title}' and published by {user}")
+        print(f"New :Publication created titled '{title}' and published by {user} at {datetime.now()}")
         ## Create connections :Mentioned between publication and user in mentions
         for mention in mentions:
             self._session.execute_write(lambda tx: tx.run(
