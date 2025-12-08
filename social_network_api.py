@@ -140,10 +140,8 @@ class Social_Network_API:
         ## Check the result
         if user_relatives:
             users = [record["m"]["name"] for record in user_relatives]
-            print(f"Relatives of {user}: ", users)
             return users
         else:
-            print(f"No relatives found for {user}")
             return ["No relatives"]
 
     def getUserRelativesRelatives(self, user) -> set[str]:
@@ -168,10 +166,8 @@ class Social_Network_API:
         ## Check the result
         if user_relatives_relatives:
             users = [record["o"]["name"] for record in user_relatives_relatives]
-            print(f"Relatives' relatives of {user}: ", users)
             return users
         else:
-            print(f"No relatives' relatives found for {user}")
             return ["No relatives' relatives"]
 
     ## Messages
@@ -203,7 +199,7 @@ class Social_Network_API:
         ## Create the new message
         self._session.execute_write(lambda tx: tx.run(
             f"MATCH (n:User {{name: '{userFrom}'}}), (m:User {{name: '{userTo}'}}) CREATE (n)-[:Message $props]->(m)", 
-            props={"convId":convId, "content":content, "date":datetime.now(), "seqNb": seqNb}
+            props={"convId":convId, "content":content, "date":datetime.now(), "seqNb": seqNb, "from": userFrom}
         ))
         print(f"New :Message added between {userFrom} and {userTo}")
 
@@ -232,19 +228,16 @@ class Social_Network_API:
             lambda tx: [
                 record["c"]._properties
                 for record in tx.run(
-                f"match (n:User:Person)-[c:Message {{convId: $convId}}]->(m:User:Person) where c.date > $date and ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
-                name1=user1, convId=convId, name2=user2, date=date
+                    f"match (n:User:Person)-[c:Message {{convId: $convId}}]->(m:User:Person) where c.date > $date and ((n.name = $name1 and m.name = $name2) or (m.name = $name1 and n.name = $name2)) return c", 
+                    name1=user1, convId=convId, name2=user2, date=date
         )]) 
         ## Sort the messages by the sequence number
         messages_after_date.sort(key=lambda x: x['seqNb'])
-        print(f"Conversion n°{convId} between {user1} and {user2} after {date}:")
         ## Deal with the messages' data
         messages_after_date_final = []
         for result in messages_after_date:
             ## Store it in a dictionnary for return
-            messages_after_date_final.append(f"{result['seqNb']}: {result['content']}")
-            ## Print it
-            print(f"{result['seqNb']}: {result['content']}")
+            messages_after_date_final.append(f"({result['seqNb']}) {result['from']}: {result['content']}")
         if messages_after_date_final:
             return messages_after_date_final
         else:
@@ -278,14 +271,11 @@ class Social_Network_API:
         )]) 
         ## Sort the messages by the sequence number
         messages.sort(key=lambda x: x['seqNb'])
-        print(f"Conversion n°{convId} between {user1} and {user2}:")
         ## Deal with the messages' data
         messages_final = []
         for result in messages:
             ## Store it in a dictionnary for return
-            messages_final.append(f"{result['seqNb']}: {result['content']}")
-            ## Print it
-            print(f"{result['seqNb']}: {result['content']}")
+            messages_final.append(f"({result['seqNb']}) {result['from']}: {result['content']}")
         if messages_final:
             return messages_final
         else:
@@ -321,7 +311,7 @@ class Social_Network_API:
                 f"match (n:User:Person {{name: $name}}), (p:Publication {{title: $title}}) create (p)-[:Mentionned]->(n)",
                 name=mention, title=title
             ))
-            print(f"New :Mentionned created between :Publication titled '{title}' and published by {user}, and {mention}") 
+            print(f"New :Mentionned created between :Publication titled '{title}' published by {user}, and {mention}") 
 
     def getMentionnedCollegues(self, user) -> set[str]:
         """
@@ -349,10 +339,8 @@ class Social_Network_API:
             collegues_final.append(collegue['m']['name'])
         ## Display and return the result
         if collegues_final:
-            print(f"Mentionned collegues of {user}: ", collegues_final)
             return collegues_final
         else:
-            print(f"No mentionned collegues found for {user}")
             return ["No mentionned collegues"]
 
     ## Connections
@@ -372,18 +360,17 @@ class Social_Network_API:
         Return:
         -------
         ["No connections"] if no connections are found
-        Or a dictionary with all the possible paths
+        Or a dictionary with all the possible paths sorted by number of hops
         """
         ## Element to build the query
         all_connections = []
-        ## Loop to fetch all connections
-        for i in range(maxHops):
-            connections = self._session.execute_write(lambda tx: tx.run(
-                f"MATCH p = ({userStart}:User:Person {{name: $nameStart}})-[:Family|Work|Friendship|Academic*1..{maxHops}]->({userEnd}:User:Person {{name: $nameEnd}})RETURN nodes(p) AS nodes, length(p) AS hops",
-                nameStart=userStart, nameEnd=userEnd
-            ).data())
-            for connection in connections:
-                all_connections.append(connection)
+        ## Fetch all connections
+        connections = self._session.execute_write(lambda tx: tx.run(
+            f"MATCH p = ({userStart}:User:Person {{name: $nameStart}})-[:Family|Work|Friendship|Academic*1..{maxHops}]->({userEnd}:User:Person {{name: $nameEnd}})RETURN nodes(p) AS nodes, length(p) AS hops",
+            nameStart=userStart, nameEnd=userEnd
+        ).data())
+        for connection in connections:
+            all_connections.append(connection)
         ## Print result
         all_connections.sort(key=lambda x: x['hops'])
         all_connections_final = []
@@ -392,11 +379,8 @@ class Social_Network_API:
                 names = ""
                 for node in connection["nodes"]:
                     names += node['name'] + ' -> '
-                all_connections_final.append(f"{connection['hops']}: {names}")
-            print(f"Connections of maximum {maxHops} between {userStart} and {userEnd}:")
-            for connection_final in all_connections_final:
-                print(f"{connection_final}")
-            return all_connections
+                all_connections_final.append(f"{connection['hops']}: {names[0:-4]}")
+            return list(set(all_connections_final))
         else:
             return ["No connections"]
             
