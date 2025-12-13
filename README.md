@@ -12,6 +12,22 @@ Toolset:
 - Python (3.12)
 - Neo4j
 
+## How to run
+
+1. Change user and password from the `main.py` file:
+
+```python
+username = "neo4j"
+password = "neo4j123"
+```
+
+2. Have the `neo4j` package installed for python
+3. Run it with the following command:
+
+```bash
+python main.py
+```
+
 ## Project structure
 
 - The function for the API are in the file social_network_api
@@ -151,11 +167,9 @@ Finally, the social network needed to have a functionality to find connections b
 
 Therefore we made the functions:
   - getConnectionHops
-  - ???
+  - getConnectionWithMessages
 
-The first one aims at finding links between two users depending on the connections they already have. The idea is to make hops from ine user to another to connect two users.
+The first one aims at finding links between two users depending on the connections they already have. The idea is to make hops from one user to another to connect two users.
 
-The second one aims at ???
-
-## Issues & Exceptions
+The second one aims at obtaining hops between two users if they have more than a specified amount of messages, connecting these indirectly through a third user.
 

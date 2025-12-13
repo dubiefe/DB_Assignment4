@@ -125,6 +125,18 @@ newAPI.createMessage("Damien", "Emilie", "2", "Hi!")
 newAPI.createMessage("Damien", "Emilie", "2", "Fine and you?")
 newAPI.createMessage("Emilie", "Damien", "2", "Perfect, see you tomorrow!")
 
+newAPI.createMessage("Damien", "Irel", "4", "Hello!")
+newAPI.createMessage("Irel", "Damien", "4", "Hello!")
+
+newAPI.createMessage("Damien", "Itziar", "5", "Hello!")
+newAPI.createMessage("Itziar", "Damien", "5", "Hello!")
+
+newAPI.createMessage("Itziar", "Irel", "6", "Hello!")
+newAPI.createMessage("Irel", "Itziar", "6", "Hello!")
+
+newAPI.createMessage("Emilie", "Itziar", "7", "Hello!")
+
+
 print("")
 print("----- B - Get messages before date -----")
 print("")
@@ -166,10 +178,19 @@ print("")
 print("----- A - Connection Hops -----")
 print("")
 
-user = "Emilie"
-user2 = "Irel"
+user = 'Emilie'
+user2 = 'Irel'
 nb_hops = 3
 connectionsHops = newAPI.getConnectionsHops(user, user2, nb_hops)
 print(f"All connections of maximum {nb_hops} hops between {user} and {user2}: ")
 for connection in connectionsHops:
     print(connection)
+
+nb_msgs = 1
+connectionsWithMessages = newAPI.getConnectionsWithMessages(user, user2, nb_msgs)
+print(f"All connections of minimum {nb_msgs} messages between {user} and {user2}: ")
+for connection in connectionsWithMessages:
+    print(connection)
+
+# Close Neo4j driver and session
+newAPI.close()

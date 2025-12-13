@@ -59,6 +59,17 @@ class Social_Network_API:
         self._driver = GraphDatabase.driver(self._uri, auth=(username, password))
         self._session = self._driver.session()
 
+
+    def close(self):
+        """
+        Explicitly close the session and driver to release resources and avoid shutdown conflicts.
+        """
+        if self._session:
+            self._session.close()
+        if self._driver:
+            self._driver.close()
+        print("Neo4j driver and session closed.")
+
     def cleanDatabase(self):
         """
         Delete all elements in the database
@@ -117,7 +128,7 @@ class Social_Network_API:
             ))
             print(f"New connection :{type} added between {userFrom} and {userTo}")
     
-    def getUserRelatives(self, user) -> set[str]:
+    def getUserRelatives(self, user) -> list[str]:
         """
         Get the name of the user:Person connected to the user with a :Family connection
 
@@ -144,7 +155,7 @@ class Social_Network_API:
         else:
             return ["No relatives"]
 
-    def getUserRelativesRelatives(self, user) -> set[str]:
+    def getUserRelativesRelatives(self, user) -> list[str]:
         """
         Get the name of the user:Person connected to another user:Person with a :Family connection and who also is connected to the user with a :Family connection
 
@@ -203,7 +214,7 @@ class Social_Network_API:
         ))
         print(f"New :Message added between {userFrom} and {userTo}")
 
-    def getMessageAfterDate(self, user1, user2, convId, date) -> set[str]:
+    def getMessageAfterDate(self, user1, user2, convId, date) -> list[str]:
         """
         Get the messages between two users with the given convId after the given date
 
@@ -243,7 +254,7 @@ class Social_Network_API:
         else:
             return ["No conversation"]
 
-    def getConversation(self, user1, user2, convId) -> set[str]:
+    def getConversation(self, user1, user2, convId) -> list[str]:
         """
         Get all the messages between two users with the given convId
 
@@ -313,7 +324,7 @@ class Social_Network_API:
             ))
             print(f"New :Mentionned created between :Publication titled '{title}' published by {user}, and {mention}") 
 
-    def getMentionnedCollegues(self, user) -> set[str]:
+    def getMentionnedCollegues(self, user) -> list[str]:
         """
         Get all user's collegues mentionned in one of their publication
 
@@ -344,7 +355,7 @@ class Social_Network_API:
             return ["No mentionned collegues"]
 
     ## Connections
-    def getConnectionsHops(self, userStart, userEnd, maxHops) -> set[str]:
+    def getConnectionsHops(self, userStart, userEnd, maxHops) -> list[str]:
         """
         Get all possible connections between two users with a maximum number of hops
 
@@ -383,10 +394,46 @@ class Social_Network_API:
             return list(set(all_connections_final))
         else:
             return ["No connections"]
-            
 
-
-
+    def getConnectionsWithMessages(self, userStart, userEnd, minMessages):
+        """
+        Get all 2 hop connections between start and end user with a minimum amount of messages
         
- 
+        Parameters:
+        -----------
+        userStart: str
+            Name of the starting user (Person).
+        userEnd: str
+            Name of the ending user (Person).
+        minMessages: int
+            Minimum number of Message relationships required between hops.
+    
+        Returns:
+        --------
+        A list of 2-hop paths, sorted by primary and secondary messages.
+        """
+        connections = self._session.execute_write(lambda tx: tx.run(
+            f"""
+            MATCH (first:User:Person {{name: $nameStart}})-[r1:Message]->(second:User:Person)-[r2:Message]->(third:User:Person {{name: $nameEnd}})
+            WITH first, second, third, 
+                 COUNT(r1) AS primaryMessages,
+                 COUNT(r2) AS secondaryMessages
+            WHERE primaryMessages >= $minMessages AND secondaryMessages >= $minMessages
+            RETURN first.name AS user1, 
+                   second.name AS user2, 
+                   third.name AS user3, 
+                   primaryMessages, 
+                   secondaryMessages
+            ORDER BY primaryMessages DESC, secondaryMessages DESC
+            """,
+            nameStart=userStart, nameEnd=userEnd, minMessages=minMessages
+        ).data())
         
+        all_connections = []
+        for connection in connections:
+            path = f"{connection['user1']} -> {connection['user2']} -> {connection['user3']}"
+            all_connections.append(
+                f"(Primary Messages: {connection['primaryMessages']}, Secondary Messages: {connection['secondaryMessages']}) Path: {path}"
+            )
+        
+        return ["No connections"] if not all_connections else list(set(all_connections))
