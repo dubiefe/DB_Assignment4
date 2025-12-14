@@ -23,27 +23,34 @@ class Social_Network_API:
     -------
     cleanDatabase(self)
         Delete everything in the database
+    close(self)
+        Close explicitly the connection to the database
      -- Users --
     createUser(self, type, **kwargs)
         Create user according to the given type and attributes
     createConnection(self, type, userFrom, userTo, **kwargs)
         Create connections between users according to the given type and attributes
-    getUserRelatives(self, user) : set[str]
+    getUserRelatives(self, user) : list[str]
         Get all the relatives of a selected user:Person (only the connections :Family)
-    getUserRelativesRelatives(self, user) : set[str]
+    getUserRelativesRelatives(self, user) : list[str]
         Get all the relatives' relatives of a selected user:Person (only the connections :Family)
      -- Messages --
     createMessage(self, userFrom, userTo, convId, content)
         Create a connection :Message between two users with the given attributes
-    getMessageAfterDate(self, user1, user2, convId, date) -> set[str]
+    getMessageAfterDate(self, user1, user2, convId, date) -> list[str]
         Get all the messages of a conversation send after the given date
-    getConversation(self, user1, user2, convId) -> set[str]
+    getConversation(self, user1, user2, convId) -> list[str]
         Get all the messages of a conversation 
      -- Publications --
     createPublication(self, user, title, body, mentions)
         Create a publication and all the connections linked to it
-    getMentionnedCollegues(self, user) -> set[str]
+    getMentionnedCollegues(self, user) -> list[str]
         Get all the collegues mentionned in publication by the given user
+     -- Connections --
+    getConnectionsHops(self, userStart, userEnd, maxHops) -> list[str]
+        Get all the connections of maxHops between two unrelated users
+    getConnectionsWithMessages(self, userStart, userEnd, minMessages) -> list[str]
+        Gett all the connection with minimum minMessages between two unrelated users
     """
 
     _uri = "neo4j://localhost:7687"
@@ -140,7 +147,7 @@ class Social_Network_API:
         Return:
         -------
         ['No relatives"] if the user doesn't have relatives
-        Or a dictionary with the names of all the user's relatives
+        Or a list with the names of all the user's relatives
         """
         ## Fetch the user's relatives
         user_relatives = self._session.execute_write(
@@ -167,7 +174,7 @@ class Social_Network_API:
         Return:
         -------
         ['No relatives' relatives"] if the user doesn't have relatives' relatives
-        Or a dictionary with the names of all the user's relatives' relatives
+        Or a list with the names of all the user's relatives' relatives
         """
         ## Fetch the user's relatives' relatives
         user_relatives_relatives = self._session.execute_write(
@@ -232,7 +239,7 @@ class Social_Network_API:
         Return:
         -------
         ["No conversation"] if no messages are found
-        Or a dictionary with all the messages send in the conversation after the date
+        Or a list with all the messages send in the conversation after the date
         """
         ## Fetch the messages after the date
         messages_after_date = self._session.execute_write(
@@ -270,7 +277,7 @@ class Social_Network_API:
         Return:
         -------
         ["No conversation"] if no messages are found
-        Or a dictionary with all the messages send in the conversation
+        Or a list with all the messages send in the conversation
         """
         ## Fetch all the messages
         messages = self._session.execute_write(
@@ -307,8 +314,8 @@ class Social_Network_API:
             String with the title of the publication
         body: str
             String with the body of the publication
-        mentions: set[str]
-            Set of Strings with the names of the users mentioned in the publication
+        mentions: list[str]
+            List of Strings with the names of the users mentioned in the publication
         """
         ## Create publication and link with author
         self._session.execute_write(lambda tx: tx.run(
@@ -336,7 +343,7 @@ class Social_Network_API:
         Return:
         -------
         ["No mentionned collegues"] if no collegues are found
-        Or a dictionary with all the collegues' names mentionned in a publication
+        Or a list with all the collegues' names mentionned in a publication
         """
         ## Get collegues mentionned in a publication of the user
         collegues = self._session.execute_write(lambda tx: tx.run(
@@ -357,7 +364,7 @@ class Social_Network_API:
     ## Connections
     def getConnectionsHops(self, userStart, userEnd, maxHops) -> list[str]:
         """
-        Get all possible connections between two users with a maximum number of hops
+        Get all possible connections between two unrelated users with a maximum number of hops
 
         Parameters:
         -----------
@@ -371,7 +378,7 @@ class Social_Network_API:
         Return:
         -------
         ["No connections"] if no connections are found
-        Or a dictionary with all the possible paths sorted by number of hops
+        Or a list with all the possible paths sorted by number of hops
         """
         ## Element to build the query
         all_connections = []
@@ -382,8 +389,7 @@ class Social_Network_API:
         ).data())
         for connection in connections:
             all_connections.append(connection)
-        ## Print result
-        all_connections.sort(key=lambda x: x['hops'])
+        ## Return result
         all_connections_final = []
         if all_connections:
             for connection in all_connections:
@@ -391,11 +397,12 @@ class Social_Network_API:
                 for node in connection["nodes"]:
                     names += node['name'] + ' -> '
                 all_connections_final.append(f"{connection['hops']}: {names[0:-4]}")
+            all_connections_final.sort()
             return list(set(all_connections_final))
         else:
             return ["No connections"]
 
-    def getConnectionsWithMessages(self, userStart, userEnd, minMessages):
+    def getConnectionsWithMessages(self, userStart, userEnd, minMessages) -> list[str]:
         """
         Get all 2 hop connections between start and end user with a minimum amount of messages
         
@@ -410,7 +417,8 @@ class Social_Network_API:
     
         Returns:
         --------
-        A list of 2-hop paths, sorted by primary and secondary messages.
+        ["No connections"] if no connections are found
+        Or a list of 2-hop paths, sorted by primary and secondary messages
         """
         connections = self._session.execute_write(lambda tx: tx.run(
             f"""

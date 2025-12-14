@@ -186,6 +186,10 @@ print(f"All connections of maximum {nb_hops} hops between {user} and {user2}: ")
 for connection in connectionsHops:
     print(connection)
 
+print("")
+print("----- B - Connection Messages -----")
+print("")
+
 nb_msgs = 1
 connectionsWithMessages = newAPI.getConnectionsWithMessages(user, user2, nb_msgs)
 print(f"All connections of minimum {nb_msgs} messages between {user} and {user2}: ")
@@ -193,4 +197,5 @@ for connection in connectionsWithMessages:
     print(connection)
 
 # Close Neo4j driver and session
+print("")
 newAPI.close()
